@@ -1,7 +1,7 @@
-#### autumn chat bot for telegram
+#### autumn Music for telegram
     project under development
     
-<h2 align="centre">Autumn Telegram Chat Bot 🎵</h2>
+<h2 align="centre">Autumn Music Bot 🎵</h2>
 
    
 
