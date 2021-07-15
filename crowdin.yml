@@ -1,0 +1,3 @@
+files:
+  - source: Autumn/localization/en.yaml
+    translation: /**/Autumn/localization/%locale_with_underscore%.yaml
