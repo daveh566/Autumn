@@ -108,7 +108,7 @@
     "SUDO_USERS": {
       "description": "For gbans",
       "value": "",
-      "required": true
+      "required": false
     },
     "DATABASE_URL": {
       "description": "get from elephantsql.com",
