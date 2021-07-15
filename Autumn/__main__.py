@@ -1,21 +1,90 @@
-import requests
-from pyrogram import Client as Bot
+import asyncio
+import os
+from importlib import import_module
 
-from Autumn.config import API_HASH, API_ID, BG_IMAGE, BOT_TOKEN
-from Autumn.services.callsmusic import run
+from aiogram import executor
+from aiogram.contrib.middlewares.logging import LoggingMiddleware
 
-response = requests.get(BG_IMAGE)
-file = open("./etc/foreground.png", "wb")
-file.write(response.content)
-file.close()
+from Autumn import TOKEN, bot, dp
+from Autumn.config import get_bool_key, get_list_key
+from Autumn.modules import ALL_MODULES, LOADED_MODULES, MOD_HELP
+from Autumn.utils.logger import log
 
-bot = Bot(
-    ":memory:",
-    API_ID,
-    API_HASH,
-    bot_token=BOT_TOKEN,
-    plugins=dict(root="DaisyXMusic.modules"),
-)
+if get_bool_key("DEBUG_MODE"):
+    log.debug("Enabling logging middleware.")
+    dp.middleware.setup(LoggingMiddleware())
 
-bot.start()
-run()
+LOAD = get_list_key("LOAD")
+DONT_LOAD = get_list_key("DONT_LOAD")
+
+if get_bool_key("LOAD_MODULES"):
+    if len(LOAD) > 0:
+        modules = LOAD
+    else:
+        modules = ALL_MODULES
+
+    modules = [x for x in modules if x not in DONT_LOAD]
+
+    log.info("Modules to load: %s", str(modules))
+    for module_name in modules:
+        # Load pm_menu at last
+        if module_name == "pm_menu":
+            continue
+        log.debug(f"Importing <d><n>{module_name}</></>")
+        imported_module = import_module("Autumn.modules." + module_name)
+        if hasattr(imported_module, "__help__"):
+            if hasattr(imported_module, "__mod_name__"):
+                MOD_HELP[imported_module.__mod_name__] = imported_module.__help__
+            else:
+                MOD_HELP[imported_module.__name__] = imported_module.__help__
+        LOADED_MODULES.append(imported_module)
+    log.info("Modules loaded!")
+else:
+    log.warning("Not importing modules!")
+
+loop = asyncio.get_event_loop()
+
+import_module("Autumn.modules.pm_menu")
+# Import misc stuff
+import_module("Autumn.utils.exit_gracefully")
+if not get_bool_key("DEBUG_MODE"):
+    import_module("Autumn.utils.sentry")
+
+
+async def before_srv_task(loop):
+    for module in [m for m in LOADED_MODULES if hasattr(m, "__before_serving__")]:
+        log.debug("Before serving: " + module.__name__)
+        loop.create_task(module.__before_serving__(loop))
+
+
+async def start(_):
+    log.debug("Starting before serving task for all modules...")
+    loop.create_task(before_srv_task(loop))
+
+    if not get_bool_key("DEBUG_MODE"):
+        log.debug("Waiting 2 seconds...")
+        await asyncio.sleep(2)
+
+
+async def start_webhooks(_):
+    url = os.getenv("WEBHOOK_URL") + f"/{TOKEN}"
+    await bot.set_webhook(url)
+    return await start(_)
+
+
+log.info("Starting loop..")
+log.info("Aiogram: Using polling method")
+
+if os.getenv("WEBHOOKS", False):
+    port = os.getenv("WEBHOOKS_PORT", 8080)
+    executor.start_webhook(dp, f"/{TOKEN}", on_startup=start_webhooks, port=port)
+else:
+    executor.start_polling(
+        dp,
+        loop=loop,
+        on_startup=start,
+        timeout=15,
+        relax=0.1,
+        fast=True,
+        skip_updates=True,
+    )
