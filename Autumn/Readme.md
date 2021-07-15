@@ -6,7 +6,7 @@ from Autumn import bot
 
 ## Importing Pyrogram
 ```python3
-from Autmn.services.pyrogram import pbot
+from Autumn.services.pyrogram import pbot
 ```
 ## Importing Telethon
 ```python3
