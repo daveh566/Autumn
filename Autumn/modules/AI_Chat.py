@@ -126,8 +126,8 @@ async def hmm(client, message):
         response = await lunaQuery(
             test, message.from_user.id if message.from_user else 0
         )
-        response = response.replace("Aco", "Daisy")
-        response = response.replace("aco", "Daisy")
+        response = response.replace("Aco", "Autumn")
+        response = response.replace("aco", "Autumn")
 
         pro = response
         try:
